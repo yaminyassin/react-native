@@ -780,6 +780,18 @@ public abstract class BaseViewManager<T extends View, C extends LayoutShadowNode
                     "phasedRegistrationNames",
                     MapBuilder.of("bubbled", "onPointerOver", "captured", "onPointerOverCapture")))
             .put(
+                "topGotPointerCapture",
+                MapBuilder.of(
+                    "phasedRegistrationNames",
+                    MapBuilder.of(
+                        "bubbled", "onGotPointerCapture", "captured", "onGotPointerCaptureCapture")))
+            .put(
+                "topLostPointerCapture",
+                MapBuilder.of(
+                    "phasedRegistrationNames",
+                    MapBuilder.of(
+                        "bubbled", "onLostPointerCapture", "captured", "onLostPointerCaptureCapture")))
+            .put(
                 "topClick",
                 MapBuilder.of(
                     "phasedRegistrationNames",
