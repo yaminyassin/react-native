@@ -395,4 +395,87 @@ TEST_F(PointerEventsProcessorTest, indirectPress) {
   EXPECT_EQ(upLog[0].eventName, "topPointerUp");
 }
 
+TEST_F(PointerEventsProcessorTest, platformBoundaryEventsForwardedAsIs) {
+  processor_.setPlatformEmitsBoundaryEvents();
+
+  auto eventPayload = PointerEvent{};
+  eventPayload.pointerId = 1;
+
+  // A platform-emitted enter event is forwarded exactly once and nothing else
+  // is synthesized around it
+  auto enterLog =
+      dispatchPointerEvent(nodeAA_, "topPointerEnter", eventPayload);
+
+  EXPECT_EQ(enterLog.size(), 1);
+
+  EXPECT_EQ(enterLog[0].tag, nodeAA_->getTag());
+  EXPECT_EQ(enterLog[0].eventName, "topPointerEnter");
+}
+
+TEST_F(PointerEventsProcessorTest, platformBoundaryEventsNoHoverSynthesis) {
+  processor_.setPlatformEmitsBoundaryEvents();
+
+  auto eventPayload = PointerEvent{};
+  eventPayload.pointerId = 1;
+
+  // Moving across two targets must not synthesize any out/leave/over/enter
+  // events
+  auto firstMoveLog =
+      dispatchPointerEvent(nodeAA_, "topPointerMove", eventPayload);
+
+  EXPECT_EQ(firstMoveLog.size(), 1);
+
+  EXPECT_EQ(firstMoveLog[0].tag, nodeAA_->getTag());
+  EXPECT_EQ(firstMoveLog[0].eventName, "topPointerMove");
+
+  auto secondMoveLog =
+      dispatchPointerEvent(nodeBB_, "topPointerMove", eventPayload);
+
+  EXPECT_EQ(secondMoveLog.size(), 1);
+
+  EXPECT_EQ(secondMoveLog[0].tag, nodeBB_->getTag());
+  EXPECT_EQ(secondMoveLog[0].eventName, "topPointerMove");
+}
+
+TEST_F(PointerEventsProcessorTest, platformBoundaryEventsPointerCapture) {
+  processor_.setPlatformEmitsBoundaryEvents();
+
+  auto eventPayload = PointerEvent{};
+  eventPayload.pointerId = 1;
+  // setPointerCapture silently fails for pointers with no active buttons
+  eventPayload.buttons = 1;
+
+  auto downLog = dispatchPointerEvent(nodeAA_, "topPointerDown", eventPayload);
+
+  EXPECT_EQ(downLog.size(), 1);
+
+  EXPECT_EQ(downLog[0].tag, nodeAA_->getTag());
+  EXPECT_EQ(downLog[0].eventName, "topPointerDown");
+
+  processor_.setPointerCapture(1, nodeB_);
+
+  // The pending capture emits topGotPointerCapture and the move is retargeted
+  // to the capturing node
+  auto moveLog = dispatchPointerEvent(nodeAA_, "topPointerMove", eventPayload);
+
+  EXPECT_EQ(moveLog.size(), 2);
+
+  EXPECT_EQ(moveLog[0].tag, nodeB_->getTag());
+  EXPECT_EQ(moveLog[0].eventName, "topGotPointerCapture");
+
+  EXPECT_EQ(moveLog[1].tag, nodeB_->getTag());
+  EXPECT_EQ(moveLog[1].eventName, "topPointerMove");
+
+  // The up event is retargeted and implicitly releases the capture
+  auto upLog = dispatchPointerEvent(nodeAA_, "topPointerUp", eventPayload);
+
+  EXPECT_EQ(upLog.size(), 2);
+
+  EXPECT_EQ(upLog[0].tag, nodeB_->getTag());
+  EXPECT_EQ(upLog[0].eventName, "topPointerUp");
+
+  EXPECT_EQ(upLog[1].tag, nodeB_->getTag());
+  EXPECT_EQ(upLog[1].eventName, "topLostPointerCapture");
+}
+
 } // namespace facebook::react

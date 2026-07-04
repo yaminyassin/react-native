@@ -61,6 +61,15 @@ class PointerEventsProcessor final {
   void releasePointerCapture(PointerIdentifier pointerId, const ShadowNode *shadowNode);
   bool hasPointerCapture(PointerIdentifier pointerId, const ShadowNode *shadowNode);
 
+  /*
+   * Puts the processor into a mode for platforms which synthesize and
+   * listener-filter their own boundary events (enter/leave/over/out). In this
+   * mode the processor does not synthesize boundary events and does not filter
+   * events by JS listeners; it only runs pointer capture and the active
+   * pointer registry.
+   */
+  void setPlatformEmitsBoundaryEvents();
+
  private:
   ActivePointer *getActivePointer(PointerIdentifier pointerId);
 
@@ -74,6 +83,8 @@ class PointerEventsProcessor final {
       const UIManager &uiManager);
 
   ActivePointerRegistry activePointers_;
+
+  bool platformEmitsBoundaryEvents_{false};
 
   CaptureTargetOverrideRegistry pendingPointerCaptureTargetOverrides_;
   CaptureTargetOverrideRegistry activePointerCaptureTargetOverrides_;

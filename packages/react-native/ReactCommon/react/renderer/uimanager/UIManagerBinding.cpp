@@ -53,7 +53,13 @@ std::shared_ptr<UIManagerBinding> UIManagerBinding::getBinding(
 }
 
 UIManagerBinding::UIManagerBinding(std::shared_ptr<UIManager> uiManager)
-    : uiManager_(std::move(uiManager)) {}
+    : uiManager_(std::move(uiManager)) {
+#ifdef ANDROID
+  // Android synthesizes and listener-filters pointer boundary events in
+  // JSPointerDispatcher, so the processor must not do either again.
+  pointerEventsProcessor_.setPlatformEmitsBoundaryEvents();
+#endif
+}
 
 UIManagerBinding::~UIManagerBinding() {
   LOG(WARNING) << "UIManagerBinding::~UIManagerBinding() was called (address: "

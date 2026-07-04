@@ -228,6 +228,33 @@ void PointerEventsProcessor::interceptPointerEvent(
     targetNode = retargeted.target;
   }
 
+  if (platformEmitsBoundaryEvents_) {
+    // The platform synthesizes its own boundary events and has already
+    // filtered every event by JS listeners, so forward everything unfiltered
+    // and only maintain pointer capture and the active pointer registry.
+    if (type == "topPointerDown") {
+      registerActivePointer(pointerEvent);
+    } else if (type == "topPointerMove") {
+      if (getActivePointer(pointerEvent.pointerId) != nullptr) {
+        updateActivePointer(pointerEvent);
+      }
+    }
+
+    eventDispatcher(*targetNode, type, priority, pointerEvent);
+
+    // Implicit pointer capture release
+    if (overrideTarget != nullptr &&
+        (type == "topPointerUp" || type == "topPointerCancel")) {
+      releasePointerCapture(pointerEvent.pointerId, overrideTarget.get());
+      processPendingPointerCapture(pointerEvent, eventDispatcher, uiManager);
+    }
+
+    if (type == "topPointerUp" || type == "topPointerCancel") {
+      unregisterActivePointer(pointerEvent);
+    }
+    return;
+  }
+
   if (type == "topClick") {
     // Click events are synthetic so should just be passed on instead of going
     // through any sort of processing.
@@ -238,8 +265,9 @@ void PointerEventsProcessor::interceptPointerEvent(
   if (type == "topPointerDown") {
     registerActivePointer(pointerEvent);
   } else if (type == "topPointerMove") {
-    // TODO: Remove the need for this check by properly handling
-    // pointerenter/pointerleave events emitted from the native platform
+    // Hover moves can arrive for pointers which were never registered by a
+    // down event. (Platforms emitting their own boundary events are handled
+    // by the platformEmitsBoundaryEvents_ mode above.)
     if (getActivePointer(pointerEvent.pointerId) != nullptr) {
       updateActivePointer(pointerEvent);
     }
@@ -284,6 +312,10 @@ void PointerEventsProcessor::interceptPointerEvent(
   if (type == "topPointerUp" || type == "topPointerCancel") {
     unregisterActivePointer(pointerEvent);
   }
+}
+
+void PointerEventsProcessor::setPlatformEmitsBoundaryEvents() {
+  platformEmitsBoundaryEvents_ = true;
 }
 
 void PointerEventsProcessor::setPointerCapture(
